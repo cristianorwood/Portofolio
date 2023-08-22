@@ -137,7 +137,7 @@ SELECT
 FROM `DA_Cyclistic.DATA2022_2023`
 GROUP BY season;
 
----
+--- GROUP BY THE TIME PERIODS --- 
 SELECT
     CASE
         WHEN EXTRACT(HOUR FROM started_at) >= 5 AND EXTRACT(HOUR FROM started_at) < 12 THEN 'Morning'
@@ -148,3 +148,53 @@ SELECT
 FROM `DA_Cyclistic.DATA2022_2023`
 WHERE user_type = 'member'
 GROUP BY time_of_day;
+
+--- CALCULATE THE MOST FRECUENT STATIONS ---
+SELECT station_name, COUNT(*) AS ride_count
+FROM (
+    SELECT start_station_name_clean AS station_name FROM da-project-cyclistic.DA_Cyclistic.DATA2022_2023
+    UNION ALL
+    SELECT end_station_name_cleaned AS station_name FROM da-project-cyclistic.DA_Cyclistic.DATA2022_2023
+) AS all_stations
+GROUP BY station_name
+ORDER BY ride_count DESC;
+
+--- CALCULATE THE MOST FRECUENT USED STATIONS FOR CASUAL RIDERS --- 
+SELECT user_type, station_name, COUNT(*) AS ride_count
+FROM (
+    SELECT user_type, start_station_name_clean AS station_name FROM da-project-cyclistic.DA_Cyclistic.DATA2022_2023 WHERE user_type='casual'
+    UNION ALL
+    SELECT user_type, end_station_name_cleaned AS station_name FROM da-project-cyclistic.DA_Cyclistic.DATA2022_2023 WHERE user_type='casual'
+) AS all_stations_by_user
+GROUP BY user_type, station_name
+ORDER BY user_type, ride_count DESC;
+
+--- CALCULATE THE MOST FRECUEND USED STATIONS FOR MEMBER RIDERS ---
+SELECT user_type, station_name, COUNT(*) AS ride_count
+FROM (
+    SELECT user_type, start_station_name_clean AS station_name FROM da-project-cyclistic.DA_Cyclistic.DATA2022_2023 WHERE user_type='member'
+    UNION ALL
+    SELECT user_type, end_station_name_cleaned AS station_name FROM da-project-cyclistic.DA_Cyclistic.DATA2022_2023 WHERE user_type='member'
+) AS all_stations_by_user
+GROUP BY user_type, station_name
+ORDER BY user_type, ride_count DESC;
+
+--- CALCULATE THE RIDE LENGTH PER DAY FOR CASUAL RIDERS ---
+
+SELECT user_type,
+       EXTRACT(DAYOFWEEK FROM started_at) AS day_of_week,
+       AVG(Total_minutes) AS avg_ride_length_minutes
+FROM `DA_Cyclistic.DATA2022_2023`
+WHERE user_type ='casual'
+GROUP BY user_type, day_of_week
+ORDER BY user_type, day_of_week;
+
+--- CALCULATE THE RIDE LENGTH PER DAY FOR MEMBER RIDERS ---
+SELECT user_type,
+       EXTRACT(DAYOFWEEK FROM started_at) AS day_of_week,
+       AVG(Total_minutes) AS avg_ride_length_minutes
+FROM `DA_Cyclistic.DATA2022_2023`
+WHERE user_type ='member'
+GROUP BY user_type, day_of_week
+ORDER BY user_type, day_of_week;
+
