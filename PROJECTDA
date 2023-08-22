@@ -1,0 +1,150 @@
+-------- COMBINING ALL TABLES--------
+CREATE TABLE da-project-cyclistic.DA_Cyclistic.yearly_data AS
+SELECT * FROM (
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2022_08
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2022_09
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2022_10
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2022_11
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2022_12
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2023_01
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2023_02
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2023_03
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2023_04
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2023_05
+    UNION ALL
+    SELECT * FROM da-project-cyclistic.DA_Cyclistic.2023_07
+);
+---- REMOVE NULL VALUES----
+CREATE TABLE da-project-cyclistic.DA_Cyclistic.null_cleaned AS
+SELECT *
+FROM da-project-cyclistic.DA_Cyclistic.yearly_data
+WHERE ride_id IS NOT NULL
+  AND rideable_type IS NOT NULL
+  AND started_at IS NOT NULL
+  AND ended_at IS NOT NULL
+  AND start_station_name IS NOT NULL
+  AND start_station_id IS NOT NULL
+  AND end_station_name IS NOT NULL
+  AND end_station_id IS NOT NULL
+  AND start_lat IS NOT NULL
+  AND start_lng IS NOT NULL
+  AND end_lat IS NOT NULL
+  AND end_lng IS NOT NULL
+  AND member_casual IS NOT NULL;
+
+---- CHECK FOR DUPLICATES -----
+SELECT ride_id, COUNT(*) AS duplicate_count
+FROM da-project-cyclistic.DA_Cyclistic.null_cleaned
+GROUP BY ride_id
+HAVING COUNT(*) > 1;
+
+--- CLEAN DATA
+
+CREATE TABLE da-project-cyclistic.DA_Cyclistic.DATA2022_2023 AS
+SELECT DISTINCT 
+    ride_id,
+    rideable_type AS bike_type,
+    started_at,
+    ended_at,
+    TIMESTAMP_DIFF(ended_at, started_at, MINUTE) AS Total_minutes,
+    EXTRACT(DAYOFWEEK FROM started_at) AS Week_day,
+    TRIM(REPLACE(REPLACE(start_station_name, '(*)', ''), 'TEMP', '')) AS start_station_name_clean,
+    TRIM(REPLACE(REPLACE(end_station_name, '(*)', ''), 'TEMP', '')) AS end_station_name_cleaned,
+    start_lat,
+    end_lat,
+    start_lng,
+    end_lng,
+    member_casual AS user_type
+FROM da-project-cyclistic.DA_Cyclistic.null_cleaned
+WHERE start_station_name NOT LIKE '%(LBS-WH-TEST)%'
+  AND end_station_name NOT LIKE '%(LBS-WH-TEST)%'
+  AND LENGTH(ride_id) = 16;
+
+------------------------- ANALYSYS --------------------
+
+---  CALCULATE THE TOTAL TRIPS AND WHAT PORCENTAGE EACH USER_TYPE REPRESENTS -------
+SELECT user_type, COUNT(*) AS Total_trips,
+       COUNT(*) * 100.0 / SUM(COUNT(*)) OVER () AS Trips_Percentage
+FROM `da-project-cyclistic.DA_Cyclistic.DATA2022_2023` 
+GROUP BY user_type;
+
+---- CALCULATE THE TOTAL TRIPS PER MONTH FOR EACH USER_TYPE (MEMEBER, CASUAL) -----
+SELECT user_type,
+       EXTRACT(MONTH FROM started_at) AS month,
+       bike_type,
+       COUNT(*) AS rides_per_month
+FROM `DA_Cyclistic.DATA2022_2023`
+GROUP BY user_type, month, bike_type
+ORDER BY month, user_type, bike_type;
+
+---- CALCULATE THE RIDES PER MONTH ---
+SELECT EXTRACT(MONTH FROM started_at) AS month,
+       COUNT(*) AS total_rides_per_month
+FROM da-project-cyclistic.DA_Cyclistic.DATA2022_2023
+GROUP BY month
+ORDER BY total_rides_per_month DESC;
+
+---CALCULATE THE CASUAL RIDES PER MONTH ----
+SELECT EXTRACT(MONTH FROM started_at) AS month,
+       user_type,
+       COUNT(*) AS total_rides_per_month
+FROM da-project-cyclistic.DA_Cyclistic.DATA2022_2023
+WHERE user_type='casual'
+GROUP BY month, user_type
+ORDER BY month, user_type, total_rides_per_month DESC;
+
+---CALCULATE THE MEMBER RIDES PER MONTH ----
+SELECT EXTRACT(MONTH FROM started_at) AS month,
+       user_type,
+       COUNT(*) AS total_rides_per_month
+FROM da-project-cyclistic.DA_Cyclistic.DATA2022_2023
+WHERE user_type='member'
+GROUP BY month, user_type
+ORDER BY month, user_type, total_rides_per_month DESC;
+
+--- CALCULATE THE AVERAGE RIDE TIME BY USER ---
+SELECT user_type,
+       AVG(Total_minutes) AS average_total_minutes
+FROM `DA_Cyclistic.DATA2022_2023`
+GROUP BY user_type;
+
+--- CALCULATE THE RIDES PER DAY OF THE WEEK --- 
+SELECT EXTRACT(DAYOFWEEK FROM started_at) AS day_of_week,
+       COUNT(*) AS total_rides,
+       COUNT(*) * 100.0 / SUM(COUNT(*)) OVER () AS percentage
+FROM `DA_Cyclistic.DATA2022_2023`
+GROUP BY day_of_week
+ORDER BY day_of_week;
+
+--- CALCULATE THE RIDES PER SEASON ---
+SELECT
+    CASE
+        WHEN EXTRACT(MONTH FROM started_at) IN (3, 4, 5) THEN 'Spring'
+        WHEN EXTRACT(MONTH FROM started_at) IN (6, 7, 8) THEN 'Summer'
+        WHEN EXTRACT(MONTH FROM started_at) IN (9, 10, 11) THEN 'Fall'
+        ELSE 'Winter'
+    END AS season,
+    COUNT(*) AS total_rides
+FROM `DA_Cyclistic.DATA2022_2023`
+GROUP BY season;
+
+---
+SELECT
+    CASE
+        WHEN EXTRACT(HOUR FROM started_at) >= 5 AND EXTRACT(HOUR FROM started_at) < 12 THEN 'Morning'
+        WHEN EXTRACT(HOUR FROM started_at) >= 12 AND EXTRACT(HOUR FROM started_at) < 18 THEN 'Afternoon'
+        ELSE 'Night'
+    END AS time_of_day,
+    COUNT(*) AS total_rides
+FROM `DA_Cyclistic.DATA2022_2023`
+WHERE user_type = 'member'
+GROUP BY time_of_day;
