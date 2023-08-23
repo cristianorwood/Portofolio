@@ -136,6 +136,9 @@ SELECT
     user_type,
     COUNT(*) AS total_rides
 FROM `DA_Cyclistic.DATA2022_2023`
+GROUP BY season, user_type
+ORDER BY user_type, season;
+
 
 --- GROUP BY THE TIME PERIODS --- 
 SELECT
@@ -144,10 +147,11 @@ SELECT
         WHEN EXTRACT(HOUR FROM started_at) >= 12 AND EXTRACT(HOUR FROM started_at) < 18 THEN 'Afternoon'
         ELSE 'Night'
     END AS time_of_day,
+    user_type,
     COUNT(*) AS total_rides
 FROM `DA_Cyclistic.DATA2022_2023`
-WHERE user_type = 'member'
-GROUP BY time_of_day;
+GROUP BY time_of_day, user_type
+ORDER BY user_type, time_of_day;
 
 --- CALCULATE THE MOST FRECUENT STATIONS ---
 SELECT station_name, COUNT(*) AS ride_count
