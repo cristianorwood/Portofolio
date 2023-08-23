@@ -133,9 +133,9 @@ SELECT
         WHEN EXTRACT(MONTH FROM started_at) IN (9, 10, 11) THEN 'Fall'
         ELSE 'Winter'
     END AS season,
+    user_type,
     COUNT(*) AS total_rides
 FROM `DA_Cyclistic.DATA2022_2023`
-GROUP BY season;
 
 --- GROUP BY THE TIME PERIODS --- 
 SELECT
